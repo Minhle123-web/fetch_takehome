@@ -16,15 +16,15 @@ def top_5_brands_recent_month(db_name):
       JOIN most_recent_month mrm ON DATE(strftime('%Y-%m-01', r.date_scanned)) = mrm.month_start
     ),
     brand_receipt_counts AS (
-      SELECT ri.brand_id, COUNT(DISTINCT ri.receipt_id) AS receipt_count
+      SELECT ri.barcode, COUNT(DISTINCT ri.receipt_id) AS receipt_count
       FROM receipt_items ri
       JOIN receipts_in_month rim ON ri.receipt_id = rim.receipt_id
-      WHERE ri.brand_id IS NOT NULL
-      GROUP BY ri.brand_id
+      WHERE ri.barcode IS NOT NULL
+      GROUP BY ri.barcode
     )
-    SELECT b.name AS brand_name, brc.brand_id, brc.receipt_count
+    SELECT b.name AS brand_name, brc.barcode, brc.receipt_count
     FROM brand_receipt_counts brc
-    JOIN brands b ON brc.brand_id = b.brand_id
+    JOIN brands b ON brc.barcode = b.barcode
     ORDER BY brc.receipt_count DESC
     LIMIT 5;
     """
@@ -33,7 +33,7 @@ def top_5_brands_recent_month(db_name):
     results = cursor.fetchall()
 
     print("Top 5 Brands by Receipts Scanned for the Most Recent Month:")
-    print("Brand Name | Brand ID | Receipt Count")
+    print("Brand Name | Barcode | Receipt Count")
     print("-" * 50)
     for row in results:
         print(f"{row[0]} | {row[1]} | {row[2]}")
@@ -62,19 +62,19 @@ def compare_top_5_brands_recent_previous_month(db_name):
     ),
     brand_receipt_counts AS (
       SELECT
-        ri.brand_id,
+        ri.barcode,
         b.name AS brand_name,
         rim.month_rank,
         COUNT(DISTINCT ri.receipt_id) AS receipt_count
       FROM receipt_items ri
       JOIN receipts_in_months rim ON ri.receipt_id = rim.receipt_id
-      JOIN brands b ON ri.brand_id = b.brand_id
-      WHERE ri.brand_id IS NOT NULL
-      GROUP BY ri.brand_id, b.name, rim.month_rank
+      JOIN brands b ON ri.barcode = b.barcode
+      WHERE ri.barcode IS NOT NULL
+      GROUP BY ri.barcode, b.name, rim.month_rank
     ),
     ranked_brands AS (
       SELECT
-        brand_id,
+        barcode,
         brand_name,
         month_rank,
         receipt_count,
@@ -92,7 +92,7 @@ def compare_top_5_brands_recent_previous_month(db_name):
       rb_previous.brand_rank AS previous_month_rank
     FROM ranked_brands rb_current
     LEFT JOIN ranked_brands rb_previous
-      ON rb_current.brand_id = rb_previous.brand_id AND rb_previous.month_rank = 2
+      ON rb_current.barcode = rb_previous.barcode AND rb_previous.month_rank = 2
     WHERE rb_current.month_rank = 1 AND rb_current.brand_rank <= 5
     ORDER BY rb_current.brand_rank;
     """
@@ -164,18 +164,18 @@ def top_brand_by_spend_recent_users(db_name):
       WHERE created_date >= DATE('now', '-6 months')
     ),
     recent_user_receipt_items AS (
-      SELECT ri.brand_id, ri.final_price
+      SELECT ri.barcode, ri.final_price
       FROM receipt_items ri
       JOIN recent_users ru ON ri.user_id = ru.user_id
-      WHERE ri.brand_id IS NOT NULL
+      WHERE ri.barcode IS NOT NULL
     )
     SELECT
       b.name AS brand_name,
-      ruri.brand_id,
+      ruri.barcode,
       SUM(ruri.final_price) AS total_spend
     FROM recent_user_receipt_items ruri
-    JOIN brands b ON ruri.brand_id = b.brand_id
-    GROUP BY ruri.brand_id, b.name
+    JOIN brands b ON ruri.barcode = b.barcode
+    GROUP BY ruri.barcode, b.name
     ORDER BY total_spend DESC
     LIMIT 1;
     """
@@ -184,7 +184,7 @@ def top_brand_by_spend_recent_users(db_name):
     result = cursor.fetchone()
 
     print("Brand with the Most Spend Among Users Created Within the Past 6 Months:")
-    print("Brand Name | Brand ID | Total Spend")
+    print("Brand Name | barcode | Total Spend")
     print("-" * 50)
     if result:
         print(f"{result[0]} | {result[1]} | {result[2]:.2f}")
@@ -204,18 +204,18 @@ def top_brand_by_transactions_recent_users(db_name):
       WHERE created_date >= DATE('now', '-6 months')
     ),
     recent_user_receipt_items AS (
-      SELECT ri.brand_id, ri.receipt_id
+      SELECT ri.barcode, ri.receipt_id
       FROM receipt_items ri
       JOIN recent_users ru ON ri.user_id = ru.user_id
-      WHERE ri.brand_id IS NOT NULL
+      WHERE ri.barcode IS NOT NULL
     )
     SELECT
       b.name AS brand_name,
-      ruri.brand_id,
+      ruri.barcode,
       COUNT(DISTINCT ruri.receipt_id) AS transaction_count
     FROM recent_user_receipt_items ruri
-    JOIN brands b ON ruri.brand_id = b.brand_id
-    GROUP BY ruri.brand_id, b.name
+    JOIN brands b ON ruri.barcode = b.barcode
+    GROUP BY ruri.barcode, b.name
     ORDER BY transaction_count DESC
     LIMIT 1;
     """
